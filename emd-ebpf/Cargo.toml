@@ -1,0 +1,19 @@
+[package]
+name = "emd-ebpf"
+version = "0.1.0"
+edition = "2021"
+authors = ["ph0llux, 0x11d875"]
+
+[dependencies]
+
+aya-ebpf = { workspace = true }
+aya-log-ebpf = { workspace = true }
+
+emd-common = { path = "../emd-common" }
+
+[build-dependencies]
+which = { workspace = true }
+
+[[bin]]
+name = "emd"
+path = "src/main.rs"
