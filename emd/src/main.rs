@@ -21,8 +21,7 @@ use clap::{
     Parser,
     ValueEnum,
 };
-use tokio::signal;
-use log::{LevelFilter, info, warn, debug};
+use log::{LevelFilter, info, debug};
 
 #[derive(Parser)]
 #[clap(about, version, author)]
@@ -49,8 +48,7 @@ enum LogLevel {
 #[inline(never)]
 pub extern "C" fn read_kernel_memory(_src_address: u64, _dump_size: usize) {}
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
+fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
 
     let log_level = match args.log_level {
@@ -82,12 +80,10 @@ async fn main() -> anyhow::Result<()> {
     info!("load eBPF program.");
     // This will include your eBPF object file as raw bytes at compile-time and load it at
     // runtime.
-    let mut ebpf = aya::Ebpf::load(aya::include_bytes_aligned!(concat!(
+    let mut ebpf = Ebpf::load(aya::include_bytes_aligned!(concat!(
         env!("OUT_DIR"),
         "/emd"
     )))?;
-    
-    init_ebpf_logger(&mut ebpf);
 
     info!("Initialize function.");
     //let outputfile = File::create(&args.output)?;
@@ -102,7 +98,7 @@ async fn main() -> anyhow::Result<()> {
 
     // get page_offset_base
     info!("Initializing buffer queue.");
-    let mut buffer_queue: Queue<&mut MapData, [u8; BUFFER_SIZE]> = Queue::try_from(ebpf.map_mut("BUFFER").unwrap())?;
+    let mut buffer_queue = Queue::try_from(ebpf.map_mut("BUFFER").unwrap())?;
     info!("Calculating page offset base");
     let page_offset_base = get_page_offset_base(&mut buffer_queue)?;
 
@@ -112,10 +108,11 @@ async fn main() -> anyhow::Result<()> {
     
     for range in system_ram_ranges {
         let range_len = range.end - range.start;
+        let range_end = range.end;
         let range_start = range.start;
-        info!("Dumping at {range_start} ...");
+        info!("Dumping 0x{range_start:x} - 0x{range_end:x}");
         for offset in range.step_by(BUFFER_SIZE) {
-            debug!("Dumping at {offset}");
+            debug!("Dumping 0x{offset:x}");
             let remaining = (range_len - (offset - range_start)) as usize;
             if remaining < BUFFER_SIZE {
                 read_kernel_memory(page_offset_base+offset, remaining);
@@ -126,10 +123,6 @@ async fn main() -> anyhow::Result<()> {
         }
     }
     output_file.flush()?;
-    
-    info!("Waiting for Ctrl-C...");
-    signal::ctrl_c().await?;
-    info!("Exiting...");
     
     Ok(())
 }
@@ -157,7 +150,6 @@ fn get_page_offset_base(buffer_queue: &mut Queue<&mut MapData, [u8; BUFFER_SIZE]
     Ok(u64::from_le_bytes(slice.try_into()?))
 }
 
-
 fn get_base_addr() -> Result<usize, anyhow::Error> {
     let me = Process::myself()?;
     let maps = me.maps()?;
@@ -169,11 +161,4 @@ fn get_base_addr() -> Result<usize, anyhow::Error> {
     }
 
     anyhow::bail!("Failed to find executable region")
-}
-
-fn init_ebpf_logger(ebpf: &mut Ebpf) {
-    if let Err(e) = aya_log::EbpfLogger::init(ebpf) {
-        // This can happen if you remove all log statements from your eBPF program.
-        warn!("failed to initialize eBPF logger: {}", e);
-    }
 }

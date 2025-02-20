@@ -13,8 +13,6 @@ use emd_common::{
     BUFFER_SIZE, QUEUE_SIZE
 };
 
-//use aya_log_ebpf::info;
-
 #[map] // 
 static BUFFER: Queue<[u8; BUFFER_SIZE]> = Queue::<[u8; BUFFER_SIZE]>::with_max_entries(QUEUE_SIZE, 0);
 
