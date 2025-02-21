@@ -2,7 +2,7 @@
 
 // This file exists to enable the library target.
 pub const BUFFER_SIZE: usize = 256; // 512 bytes is the stack size of an ebpf program. We won't reach this.
-pub const QUEUE_SIZE: u32 = 1;
+pub const QUEUE_SIZE: u32 = 10;
 
 // IOMEM
 pub const PROC_IOMEM: &str = "/proc/iomem";

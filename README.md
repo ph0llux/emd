@@ -16,5 +16,10 @@ cargo build --release
 
 ## usage
 ```
-emd -o output-file.bin
+sudo ./emd -o output-file.bin
+```
+
+to show all options, you can use
+```
+./emd -h
 ```

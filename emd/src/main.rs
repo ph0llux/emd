@@ -5,6 +5,7 @@ use std::{
      ops::Range, path::{Path, PathBuf}
 };
 
+
 // - modules
 mod iomem;
 
@@ -21,7 +22,7 @@ use clap::{
     Parser,
     ValueEnum,
 };
-use log::{LevelFilter, info, debug};
+use log::{LevelFilter, info, debug, warn};
 
 #[derive(Parser)]
 #[clap(about, version, author)]
@@ -74,10 +75,10 @@ fn main() -> anyhow::Result<()> {
     };
     let ret = unsafe { libc::setrlimit(libc::RLIMIT_MEMLOCK, &rlim) };
     if ret != 0 {
-        debug!("remove limit on locked memory failed, ret is: {}", ret);
+        warn!("remove limit on locked memory failed, ret is: {}", ret);
     }
 
-    info!("load eBPF program.");
+    info!("Load eBPF program.");
     // This will include your eBPF object file as raw bytes at compile-time and load it at
     // runtime.
     let mut ebpf = Ebpf::load(aya::include_bytes_aligned!(concat!(
@@ -86,7 +87,6 @@ fn main() -> anyhow::Result<()> {
     )))?;
 
     info!("Initialize function.");
-    //let outputfile = File::create(&args.output)?;
     let program: &mut UProbe = ebpf.program_mut(READ_KERNEL_MEM).unwrap().try_into()?;
     program.load()?;
 
@@ -102,7 +102,7 @@ fn main() -> anyhow::Result<()> {
     info!("Calculating page offset base");
     let page_offset_base = get_page_offset_base(&mut buffer_queue)?;
 
-    info!("Extract ram ranges");
+    info!("Extract memory ranges.");
     let system_ram_ranges = extract_system_ram_ranges()?;
     let mut output_file = BufWriter::new(File::create(&args.output)?);
     
@@ -115,9 +115,19 @@ fn main() -> anyhow::Result<()> {
             debug!("Dumping 0x{offset:x}");
             let remaining = (range_len - (offset - range_start)) as usize;
             if remaining < BUFFER_SIZE {
-                read_kernel_memory(page_offset_base+offset, remaining);
+                unsafe {
+                    // unsafe block is necessary to ensure the compiler will not optimize this away.
+                    let func: extern "C" fn(u64, usize) = read_kernel_memory;
+                    std::ptr::read_volatile(&func);
+                    func(page_offset_base+offset, remaining);
+                }
             } else {
-                read_kernel_memory(page_offset_base+offset, BUFFER_SIZE);
+                unsafe {
+                    // unsafe block is necessary to ensure the compiler will not optimize this away.
+                    let func: extern "C" fn(u64, usize) = read_kernel_memory;
+                    std::ptr::read_volatile(&func);
+                    func(page_offset_base+offset, BUFFER_SIZE);
+                }
             }
             output_file.write_all(&buffer_queue.pop(0)?)?;
         }
@@ -145,7 +155,13 @@ fn get_page_offset_base(buffer_queue: &mut Queue<&mut MapData, [u8; BUFFER_SIZE]
     }
 
     // Read the content of the kernel variable page_offset_base to get the offset of direct mapping region
-    read_kernel_memory(kallsyms_symb_addr, 8);
+    
+    unsafe {
+        // unsafe block is necessary to ensure the compiler will not optimize this away.
+        let func: extern "C" fn(u64, usize) = read_kernel_memory;
+        std::ptr::read_volatile(&func);
+        func(kallsyms_symb_addr, 8);
+    }
     let slice: &[u8] = &buffer_queue.pop(0)?[..8];
     Ok(u64::from_le_bytes(slice.try_into()?))
 }
