@@ -10,7 +10,8 @@ use aya_ebpf::{
 };
 
 use emd_common::{
-    BUFFER_SIZE, QUEUE_SIZE
+    BUFFER_SIZE, QUEUE_SIZE, MAX_QUEUE_SIZE,
+    calc_queue_elements,
 };
 
 #[map] // 
@@ -27,22 +28,31 @@ fn read_kernel_memory(ctx: ProbeContext) -> u32 {
         Some(value) => value,
         None => return 2,
     };
-    if dump_size > BUFFER_SIZE {
+    if dump_size > MAX_QUEUE_SIZE {
         return 3;
     }
+
+    let queue_elements = calc_queue_elements(dump_size);
     
     let mut buffer = [0u8; BUFFER_SIZE];
-    unsafe {
-        match bpf_probe_read_kernel_buf(src_address as *const u8, &mut buffer[..dump_size]) {
-            Err(_) => {
-                return 4
-            },
-            Ok(_) => {
-                if BUFFER.push(&buffer, 0).is_err() {
-                    return 5;
-                }
-            }
+    for i in 0..queue_elements {
+        let queue_element_size = if i == queue_elements && dump_size % BUFFER_SIZE != 0 {
+            dump_size % BUFFER_SIZE
+        } else {
+            BUFFER_SIZE
         };
+        unsafe {
+            match bpf_probe_read_kernel_buf(src_address as *const u8, &mut buffer[..queue_element_size]) {
+                Err(_) => {
+                    return 4
+                },
+                Ok(_) => {
+                    if BUFFER.push(&buffer, 0).is_err() {
+                        return 5;
+                    }
+                }
+            };
+        }
     }
     0
 }

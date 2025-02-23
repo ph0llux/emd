@@ -111,28 +111,36 @@ fn main() -> anyhow::Result<()> {
         let range_end = range.end;
         let range_start = range.start;
         info!("Dumping 0x{range_start:x} - 0x{range_end:x}");
-        for offset in range.step_by(BUFFER_SIZE) {
+        for offset in range.step_by(MAX_QUEUE_SIZE) {
             debug!("Dumping 0x{offset:x}");
             let remaining = (range_len - (offset - range_start)) as usize;
-            let size = if remaining < BUFFER_SIZE {
+            let dump_size = if remaining < MAX_QUEUE_SIZE {
                 remaining
             } else {
-                BUFFER_SIZE
+                MAX_QUEUE_SIZE
             };
             unsafe {
                 // unsafe block is necessary to ensure the compiler will not optimize this away.
                 let func: extern "C" fn(u64, usize) = read_kernel_memory;
                 std::ptr::read_volatile(&func);
-                func(page_offset_base+offset, size);
+                func(page_offset_base+offset, dump_size);
             }
-            let buffer = match buffer_queue.pop(0) {
-                Ok(value) => value,
-                Err(_) => {
-                    warn!("Could not read 0x{offset:x}. Writing zeros for appropriate zone.");
-                    [0u8; BUFFER_SIZE]
-                }
-            };
-            output_file.write_all(&buffer)?;
+            let queue_elements = calc_queue_elements(dump_size);
+            for i in 0..queue_elements {
+                let queue_element_size = if i == queue_elements && dump_size % BUFFER_SIZE != 0 {
+                    dump_size % BUFFER_SIZE
+                } else {
+                    BUFFER_SIZE
+                };
+                let buffer = match buffer_queue.pop(0) {
+                    Ok(value) => value,
+                    Err(_) => {
+                        warn!("Could not read 0x{offset:x}. Writing zeros for appropriate zone.");
+                        [0u8; BUFFER_SIZE]
+                    }
+                };
+                output_file.write_all(&buffer[..queue_element_size])?;
+            }
         }
     }
     output_file.flush()?;
