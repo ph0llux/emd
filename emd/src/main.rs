@@ -114,28 +114,32 @@ fn main() -> anyhow::Result<()> {
         for offset in range.step_by(BUFFER_SIZE) {
             debug!("Dumping 0x{offset:x}");
             let remaining = (range_len - (offset - range_start)) as usize;
-            if remaining < BUFFER_SIZE {
-                unsafe {
-                    // unsafe block is necessary to ensure the compiler will not optimize this away.
-                    let func: extern "C" fn(u64, usize) = read_kernel_memory;
-                    std::ptr::read_volatile(&func);
-                    func(page_offset_base+offset, remaining);
-                }
+            let size = if remaining < BUFFER_SIZE {
+                remaining
             } else {
-                unsafe {
-                    // unsafe block is necessary to ensure the compiler will not optimize this away.
-                    let func: extern "C" fn(u64, usize) = read_kernel_memory;
-                    std::ptr::read_volatile(&func);
-                    func(page_offset_base+offset, BUFFER_SIZE);
-                }
+                BUFFER_SIZE
+            };
+            unsafe {
+                // unsafe block is necessary to ensure the compiler will not optimize this away.
+                let func: extern "C" fn(u64, usize) = read_kernel_memory;
+                std::ptr::read_volatile(&func);
+                func(page_offset_base+offset, size);
             }
-            output_file.write_all(&buffer_queue.pop(0)?)?;
+            let buffer = match buffer_queue.pop(0) {
+                Ok(value) => value,
+                Err(_) => {
+                    warn!("Could not read 0x{offset:x}. Writing zeros for appropriate zone.");
+                    [0u8; BUFFER_SIZE]
+                }
+            };
+            output_file.write_all(&buffer)?;
         }
     }
     output_file.flush()?;
     
     Ok(())
 }
+
 
 fn get_page_offset_base(buffer_queue: &mut Queue<&mut MapData, [u8; BUFFER_SIZE]>) -> anyhow::Result<u64>{
     let path = Path::new(PROC_KALLSYMS);
