@@ -7,10 +7,12 @@ use std::{
 
 
 // - modules
-mod iomem;
+mod address_calculation;
+mod memory_dump;
 
 // - re-exports
-use iomem::*;
+use address_calculation::*;
+use memory_dump::*;
 
 // - External
 use procfs::process::Process;
@@ -18,10 +20,14 @@ use aya::{programs::UProbe, Ebpf};
 use aya::maps::{MapData, Queue};
 use emd_common::*;
 
+use zstd::stream::Encoder as ZstdEncoder;
+use lz4_flex::frame::FrameEncoder as Lz4Encoder;
+
 use clap::{
     Parser,
     ValueEnum,
 };
+
 use log::{LevelFilter, info, debug, warn};
 
 #[derive(Parser)]
@@ -32,8 +38,19 @@ struct Cli {
     output: PathBuf,
 
     /// sets the log level - default is info.
-    #[clap(short='l', long="loglevel", required=false, value_enum, default_value="info")]
+    #[clap(short='l', long="loglevel", global=true, required=false, value_enum, default_value="info")]
     log_level: LogLevel,
+
+    /// sets the compression.
+    #[clap(short='c', long="compress", global=true, required=false, value_enum, default_value="none")]
+    compression: Compression,
+}
+
+#[derive(ValueEnum, Clone)]
+enum Compression {
+    None,
+    Zstd,
+    Lz4,
 }
 
 #[derive(ValueEnum, Clone)]
@@ -47,7 +64,18 @@ enum LogLevel {
 
 #[no_mangle]
 #[inline(never)]
-pub extern "C" fn read_kernel_memory(_src_address: u64, _dump_size: usize) {}
+pub extern "C" fn _read_kernel_memory(_src_address: u64, _dump_size: usize) {}
+
+#[no_mangle]
+#[inline(never)]
+fn read_kernel_memory(offset: u64, dump_size: usize) {
+    let func: extern "C" fn(u64, usize) = _read_kernel_memory;
+    // unsafe block is necessary to ensure the compiler will not optimize this away.
+    unsafe {
+        std::ptr::read_volatile(&func);
+        func(offset, dump_size);
+    }
+}
 
 fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
@@ -99,94 +127,5 @@ fn main() -> anyhow::Result<()> {
     // get page_offset_base
     info!("Initializing buffer queue.");
     let mut buffer_queue = Queue::try_from(ebpf.map_mut("BUFFER").unwrap())?;
-    info!("Calculating page offset base");
-    let page_offset_base = get_page_offset_base(&mut buffer_queue)?;
-
-    info!("Extract memory ranges.");
-    let system_ram_ranges = extract_system_ram_ranges()?;
-    let mut output_file = BufWriter::new(File::create(&args.output)?);
-    
-    for range in system_ram_ranges {
-        let range_len = range.end - range.start;
-        let range_end = range.end;
-        let range_start = range.start;
-        info!("Dumping 0x{range_start:x} - 0x{range_end:x}");
-        for offset in range.step_by(MAX_QUEUE_SIZE) {
-            debug!("Dumping 0x{offset:x}");
-            let remaining = (range_len - (offset - range_start)) as usize;
-            let dump_size = if remaining < MAX_QUEUE_SIZE {
-                remaining
-            } else {
-                MAX_QUEUE_SIZE
-            };
-            unsafe {
-                // unsafe block is necessary to ensure the compiler will not optimize this away.
-                let func: extern "C" fn(u64, usize) = read_kernel_memory;
-                std::ptr::read_volatile(&func);
-                func(page_offset_base+offset, dump_size);
-            }
-            let queue_elements = calc_queue_elements(dump_size);
-            for i in 0..queue_elements {
-                let queue_element_size = if i == queue_elements && dump_size % BUFFER_SIZE != 0 {
-                    dump_size % BUFFER_SIZE
-                } else {
-                    BUFFER_SIZE
-                };
-                let buffer = match buffer_queue.pop(0) {
-                    Ok(value) => value,
-                    Err(_) => {
-                        warn!("Could not read 0x{offset:x}. Writing zeros for appropriate zone.");
-                        [0u8; BUFFER_SIZE]
-                    }
-                };
-                output_file.write_all(&buffer[..queue_element_size])?;
-            }
-        }
-    }
-    output_file.flush()?;
-    
-    Ok(())
-}
-
-
-fn get_page_offset_base(buffer_queue: &mut Queue<&mut MapData, [u8; BUFFER_SIZE]>) -> anyhow::Result<u64>{
-    let path = Path::new(PROC_KALLSYMS);
-    let file = File::open(path)?;
-    let reader = io::BufReader::new(file);
-    let mut kallsyms_symb_addr = 0;
-    for line in reader.lines() {
-        let line = line?;
-        if line.contains(PAGE_OFFSET_BASE) {
-            let parts: Vec<&str> = line.split_whitespace().collect();
-            if let Some(offset_str) = parts.first() {
-                kallsyms_symb_addr = u64::from_str_radix(offset_str, 16)
-                    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
-                break;
-            }
-        }
-    }
-
-    // Read the content of the kernel variable page_offset_base to get the offset of direct mapping region
-    
-    unsafe {
-        // unsafe block is necessary to ensure the compiler will not optimize this away.
-        let func: extern "C" fn(u64, usize) = read_kernel_memory;
-        std::ptr::read_volatile(&func);
-        func(kallsyms_symb_addr, 8);
-    }
-    let slice: &[u8] = &buffer_queue.pop(0)?[..8];
-    Ok(u64::from_le_bytes(slice.try_into()?))
-}
-
-fn get_base_addr() -> Result<usize, anyhow::Error> {
-    let me = Process::myself()?;
-    let maps = me.maps()?;
-
-    for entry in maps {
-        if entry.perms.contains("r-xp") { //TODO: better implementation using procfs version 0.17?!
-            return Ok((entry.address.0 - entry.offset) as usize);
-        }
-    }
-
-    anyhow::bail!("Failed to find executable region")
+    dump_physical_memory(&args, &mut buffer_queue)
 }

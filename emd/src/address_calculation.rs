@@ -31,7 +31,8 @@ use super::*;
 ///within the system RAM or, if the network interface card has multiple Ethernet ports, the memory registers assigned
 ///for each port.
 ///This method results you the 'System RAM' entries as a Vec<std::ops::Range<u64>>.
-pub fn extract_system_ram_ranges() -> anyhow::Result<Vec<Range<u64>>> {
+pub fn extract_mem_range<I: Into<String>>(identifier: I) -> anyhow::Result<Vec<Range<u64>>> {
+    let identifier = identifier.into();
     let path = Path::new(PROC_IOMEM);
     let file = File::open(path)?;
     let reader = io::BufReader::new(file);
@@ -39,7 +40,7 @@ pub fn extract_system_ram_ranges() -> anyhow::Result<Vec<Range<u64>>> {
 
     for line in reader.lines() {
         let line = line?;
-        if line.contains(SEPARATOR_SYSTEM_RAM) {
+        if line.contains(&identifier) {
             if let Some((start, end)) = parse_memory_range(&line) {
                 ranges.push(start..(end + 1));
             }
@@ -60,4 +61,40 @@ pub fn parse_memory_range(line: &str) -> Option<(u64, u64)> {
         }
     }
     None
+}
+
+pub fn get_page_offset_base(buffer_queue: &mut Queue<&mut MapData, [u8; BUFFER_SIZE]>) -> anyhow::Result<u64>{
+    let path = Path::new(PROC_KALLSYMS);
+    let file = File::open(path)?;
+    let reader = io::BufReader::new(file);
+    let mut kallsyms_symb_addr = 0;
+    for line in reader.lines() {
+        let line = line?;
+        if line.contains(PAGE_OFFSET_BASE) {
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if let Some(offset_str) = parts.first() {
+                kallsyms_symb_addr = u64::from_str_radix(offset_str, 16)
+                    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+                break;
+            }
+        }
+    }
+
+    read_kernel_memory(kallsyms_symb_addr, 8);
+
+    let slice: &[u8] = &buffer_queue.pop(0)?[..8];
+    Ok(u64::from_le_bytes(slice.try_into()?))
+}
+
+pub fn get_base_addr() -> Result<usize, anyhow::Error> {
+    let me = Process::myself()?;
+    let maps = me.maps()?;
+
+    for entry in maps {
+        if entry.perms.contains("r-xp") { //TODO: better implementation using procfs version 0.17?!
+            return Ok((entry.address.0 - entry.offset) as usize);
+        }
+    }
+
+    anyhow::bail!("Failed to find executable region")
 }

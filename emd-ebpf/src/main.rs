@@ -3,7 +3,7 @@
 
 
 use aya_ebpf::{
-    helpers::bpf_probe_read_kernel_buf, 
+    helpers::bpf_probe_read_buf, 
     macros::{map, uprobe}, 
     maps::Queue, 
     programs::ProbeContext,
@@ -42,7 +42,7 @@ fn read_kernel_memory(ctx: ProbeContext) -> u32 {
             BUFFER_SIZE
         };
         unsafe {
-            match bpf_probe_read_kernel_buf(src_address as *const u8, &mut buffer[..queue_element_size]) {
+            match bpf_probe_read_buf(src_address as *const u8, &mut buffer[..queue_element_size]) {
                 Err(_) => {
                     return 4
                 },

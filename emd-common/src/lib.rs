@@ -10,6 +10,12 @@ pub const PROC_IOMEM: &str = "/proc/iomem";
 pub const SEPARATOR_SYSTEM_RAM: &str = " : System RAM";
 pub const SEPARATOR_HYPHEN: char = '-';
 
+// SYS
+pub const SYS_DEVICES: &str = "/sys/bus/pci/devices";
+pub const SYS_UEVENT: &str = "uevent";
+pub const SYS_UEVENT_IDENTIFIER_DRIVER: &str = "DRIVER=";
+pub const DRIVER_NVIDIA: &str = "nvidia";
+
 // KALLSYMS
 pub const PROC_KALLSYMS: &str = "/proc/kallsyms";
 pub const PAGE_OFFSET_BASE: &str = "page_offset_base";
@@ -23,6 +29,7 @@ pub const READ_KERNEL_MEM: &str = "read_kernel_memory";
 // - Errors
 pub const ERROR_DUMP_MEMORY_IOMEM_SEPARATE_KEY_VAL_MAP: &str = "There is no left side in key/value pair";
 pub const ERROR_DUMP_MEMORY_IOMEM_CAPSYSADM: &str = "Need CAP_SYS_ADMIN to read /proc/iomem";
+pub const ERROR_PATH_READ_SYS: &str = "An error occured while trying to read necessary data from /sys";
 
 pub fn calc_queue_elements(dump_size: usize) -> usize {
     if dump_size % BUFFER_SIZE == 0 {
