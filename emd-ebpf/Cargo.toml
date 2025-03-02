@@ -19,3 +19,15 @@ which = { workspace = true }
 [[bin]]
 name = "emd"
 path = "src/main.rs"
+
+[profile.release]
+debug = 2
+codegen-units = 1
+opt-level = 0
+panic = "abort"
+
+[profile.dev]
+debug = 2
+codegen-units = 1
+opt-level = 0
+panic = "abort"
