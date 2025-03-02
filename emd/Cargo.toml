@@ -7,7 +7,6 @@ license = "GPL-3.0"
 description = "A tool to acquire the physical memory on linux systems (root is necessary)"
 repository = "https://github.com/ph0llux/emd"
 keywords = ["forensics", "memory", "acquisition", "security"]
-publish = true
 
 [dependencies]
 anyhow = { workspace = true, default-features = true }
@@ -21,15 +20,15 @@ walkdir = { workspace = true }
 zstd = { workspace = true }
 lz4_flex = { workspace = true }
 
-emd-common = { version = "0.3.1", features = ["std"]}
+emd-common = { path="../emd-common", features = ["std"]}
 
 
 [build-dependencies]
 anyhow = { workspace = true }
 aya-build = { workspace = true }
 
-emd-ebpf = { version = "1.0.0" }
-emd-common = { version = "0.3.1", features = ["std"]}
+emd-ebpf = { path="../emd-ebpf" }
+emd-common = { path="../emd-common", features = ["std"]}
 
 [[bin]]
 name = "emd"

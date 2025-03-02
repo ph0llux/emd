@@ -7,11 +7,10 @@ license = "GPL-3.0"
 description = "The ebpf part of emd"
 repository = "https://github.com/ph0llux/emd"
 keywords = ["forensics", "memory", "acquisition", "security", "ebpf"]
-publish = true
 
 [dependencies]
 aya-ebpf = { workspace = true }
-emd-common = { version = "0.3.1" }
+emd-common = { path="../emd-common" }
 
 [build-dependencies]
 which = { workspace = true }
