@@ -15,7 +15,7 @@ walkdir = { workspace = true }
 zstd = { workspace = true }
 lz4_flex = { workspace = true }
 
-emd-common = { path = "../emd-common" }
+emd-common = { path = "../emd-common", features = ["std"]}
 
 
 [build-dependencies]

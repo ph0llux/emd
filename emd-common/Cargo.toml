@@ -1,17 +1,17 @@
 [package]
 name = "emd-common"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 authors = ["ph0llux <ph0llux@pm.me>"]
 license = "GPLv3"
-description = "Various common common stuff, necessary for emd"
+description = "Various common stuff, necessary for emd"
 repository = "https://github.com/ph0llux/emd"
 keywords = ["forensics", "memory", "acquisition", "security"]
 publish = true
 
 [features]
 default = []
-user = ["aya"]
+std = []
 
 [dependencies]
 aya = { workspace = true, optional = true }
