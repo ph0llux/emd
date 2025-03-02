@@ -10,7 +10,7 @@ use std::{
 };
 
 // This file exists to enable the library target.
-pub const BUFFER_SIZE: usize = 256; // 512 bytes is the stack size of an ebpf program. We won't reach this.
+pub const BUFFER_SIZE: usize = 256; // 512 bytes is the maximum allowed stack size of an ebpf program. We won't reach this.
 pub const QUEUE_SIZE: u32 = 64;
 pub const MAX_QUEUE_SIZE: usize = QUEUE_SIZE as usize * BUFFER_SIZE;
 
@@ -18,12 +18,6 @@ pub const MAX_QUEUE_SIZE: usize = QUEUE_SIZE as usize * BUFFER_SIZE;
 pub const PROC_IOMEM: &str = "/proc/iomem";
 pub const SEPARATOR_SYSTEM_RAM: &str = " : System RAM";
 pub const SEPARATOR_HYPHEN: char = '-';
-
-// SYS
-pub const SYS_DEVICES: &str = "/sys/bus/pci/devices";
-pub const SYS_UEVENT: &str = "uevent";
-pub const SYS_UEVENT_IDENTIFIER_DRIVER: &str = "DRIVER=";
-pub const DRIVER_NVIDIA: &str = "nvidia";
 
 // KALLSYMS
 pub const PROC_KALLSYMS: &str = "/proc/kallsyms";
