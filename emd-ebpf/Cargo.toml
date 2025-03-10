@@ -4,7 +4,7 @@ version = "1.0.0"
 edition = "2021"
 authors = ["ph0llux"]
 license = "GPL-3.0"
-description = "Contains the ebpf-binary"
+description = "This library contains the eBPF binary for emd."
 repository = "https://github.com/ph0llux/emd"
 keywords = ["forensics", "memory", "acquisition", "security", "ebpf"]
 include = [
@@ -17,11 +17,10 @@ aya ={ workspace = true }
 [build-dependencies]
 aya-build = { workspace = true }
 anyhow = { workspace = true }
-emd-ebpf-impl = { path = "../emd-ebpf-impl" }
+emd-ebpf-impl = { version = "1.0.0"}
 
 [features]
-# Build eBPF instead of using the prebuild ebpf binary
 default = []
-build = []
+build = [] # Build eBPF instead of using the prebuild ebpf binary
 
 [lib]
