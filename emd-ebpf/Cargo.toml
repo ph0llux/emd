@@ -8,7 +8,8 @@ description = "This library contains the eBPF binary for emd."
 repository = "https://github.com/ph0llux/emd"
 keywords = ["forensics", "memory", "acquisition", "security", "ebpf"]
 include = [
-    "assets/emd_ebpf_prebuild"
+    "assets/emd_ebpf_prebuild",
+    "**"
 ]
 
 [dependencies]
