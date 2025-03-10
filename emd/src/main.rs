@@ -15,7 +15,7 @@ use address_calculation::*;
 use memory_dump::*;
 
 // - External
-use procfs::process::Process;
+use procfs::process::{Process, MMPermissions};
 use aya::{programs::UProbe, Ebpf};
 use aya::maps::{MapData, Queue};
 use emd_common::*;
@@ -92,6 +92,9 @@ fn main() -> anyhow::Result<()> {
         .filter_level(log_level)
         .init();
 
+    let pid = std::process::id();
+    info!("Using PID: {pid}");
+
     info!("Initializing ebpf memory dumper.");
 
     info!("Setting rlimits.");
@@ -109,10 +112,7 @@ fn main() -> anyhow::Result<()> {
     info!("Load eBPF program.");
     // This will include your eBPF object file as raw bytes at compile-time and load it at
     // runtime.
-    let mut ebpf = Ebpf::load(aya::include_bytes_aligned!(concat!(
-        env!("OUT_DIR"),
-        "/emd"
-    )))?;
+    let mut ebpf = Ebpf::load(emd_ebpf::EBPF_BINARY)?;
 
     info!("Initialize function.");
     let program: &mut UProbe = ebpf.program_mut(READ_KERNEL_MEM).unwrap().try_into()?;

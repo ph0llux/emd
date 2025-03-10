@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["emd", "emd-ebpf", "emd-common"]
+members = ["emd", "emd-ebpf", "emd-common", "emd-ebpf-impl"]
 default-members = ["emd"]
 
 [workspace.dependencies]
@@ -11,17 +11,17 @@ aya-ebpf = { version = "0.1.1", default-features = false }
 anyhow = { version = "1", default-features = false }
 walkdir = { version = "2" }
 clap = { version = "4.5.30" }
-env_logger = { version = "0.11.5" }
+env_logger = { version = "0.11.7" }
 libc = { version = "0.2.159", default-features = false }
 log = { version = "0.4.26", default-features = false }
 which = { version = "7.0.2", default-features = false }
-procfs = { version = "0.14" }
+procfs = { version = "0.17" }
 
 #compression
 zstd = { version = "0.13", features = ["zstdmt"] }
 lz4_flex = { version = "0.11.3", features = ["frame"] }
 
-[profile.release.package.emd-ebpf]
+[profile.release.package.emd-ebpf-impl]
 debug = 2
 codegen-units = 1
 opt-level = 0

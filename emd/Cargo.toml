@@ -19,17 +19,21 @@ clap = { workspace = true, features = ["derive"] }
 walkdir = { workspace = true }
 zstd = { workspace = true }
 lz4_flex = { workspace = true }
-
+emd-ebpf = { path="../emd-ebpf", features = ["build"]}
 emd-common = { path="../emd-common", features = ["std"]}
 
 
 [build-dependencies]
 anyhow = { workspace = true }
 aya-build = { workspace = true }
-
-emd-ebpf = { path="../emd-ebpf" }
+cargo_metadata = "0.19.2"
 emd-common = { path="../emd-common", features = ["std"]}
 
 [[bin]]
 name = "emd"
 path = "src/main.rs"
+
+[profile.release.package.emd-ebpf]
+debug = 2
+codegen-units = 1
+opt-level = 0
