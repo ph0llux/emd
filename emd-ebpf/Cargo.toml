@@ -1,6 +1,6 @@
 [package]
 name = "emd-ebpf"
-version = "1.0.0"
+version = "1.0.1"
 edition = "2021"
 authors = ["ph0llux"]
 license = "GPL-3.0"
@@ -13,11 +13,11 @@ include = [
 ]
 
 [dependencies]
-aya ={ workspace = true }
+aya = { version = "0.13.1", default-features = false }
 
 [build-dependencies]
-aya-build = { workspace = true }
-anyhow = { workspace = true }
+aya-build = { version = "0.1.2", default-features = false }
+anyhow = { version = "1", default-features = false }
 emd-ebpf-impl = { version = "1.0.0"}
 
 [features]
