@@ -1,6 +1,6 @@
 [package]
 name = "emd-ebpf"
-version = "1.0.2"
+version = "1.0.3"
 edition = "2021"
 authors = ["ph0llux"]
 license = "GPL-3.0"
@@ -16,12 +16,12 @@ include = [
 aya = { version = "0.13.1", default-features = false }
 
 [build-dependencies]
-aya-build = { version = "0.1.2", default-features = false }
-anyhow = { version = "1", default-features = false }
-emd-ebpf-impl = { version = "1.0.1"}
+aya-build = { version = "0.1.2", default-features = false,  optional = true  }
+anyhow = { version = "1", default-features = false,  optional = true  }
+emd-ebpf-impl = { version = "1.0.1",  optional = true }
 
 [features]
 default = []
-build = [] # Build eBPF instead of using the prebuild ebpf binary
+build = ["dep:aya-build", "dep:anyhow", "dep:emd-ebpf-impl"] # Build eBPF instead of using the prebuild ebpf binary
 
 [lib]
