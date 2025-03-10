@@ -1,2 +1,6 @@
 [build]
+target = "bpfel-unknown-none"
 rustflags = ["-C", "opt-level=0", "-C", "debuginfo=2", "-C", "codegen-units=1"]
+
+[unstable]
+build-std = ["core"]
