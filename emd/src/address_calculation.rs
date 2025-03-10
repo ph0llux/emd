@@ -13,7 +13,9 @@ pub fn get_base_addr() -> Result<usize, anyhow::Error> {
     let maps = me.maps()?;
 
     for entry in maps {
-        if entry.perms.contains("r-xp") { //TODO: better implementation using procfs version 0.17?!
+        if entry.perms.contains(MMPermissions::EXECUTE) && 
+        entry.perms.contains(MMPermissions::READ) && 
+        entry.perms.contains(MMPermissions::PRIVATE) {
             return Ok((entry.address.0 - entry.offset) as usize);
         }
     }
