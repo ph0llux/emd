@@ -1,33 +1,28 @@
 [package]
 name = "emdumper"
-version = "0.5.1"
+version = "0.5.2"
 edition = "2021"
 authors = ["ph0llux"]
 license = "GPL-3.0"
 description = "A tool to acquire the physical memory on linux systems (root is necessary)"
 repository = "https://github.com/ph0llux/emd"
 keywords = ["forensics", "memory", "acquisition", "security"]
+readme = "../README.md"
 
 [dependencies]
-anyhow = { workspace = true, default-features = true }
-aya = { workspace = true }
-env_logger = { workspace = true }
-libc = { workspace = true }
-log = { workspace = true }
-procfs ={ workspace = true }
-clap = { workspace = true, features = ["derive"] }
-walkdir = { workspace = true }
-zstd = { workspace = true }
-lz4_flex = { workspace = true }
-emd-ebpf = { path="../emd-ebpf", features = ["build"]}
-emd-common = { path="../emd-common", features = ["std"]}
-
-
-[build-dependencies]
-anyhow = { workspace = true }
-aya-build = { workspace = true }
-cargo_metadata = "0.19.2"
-emd-common = { path="../emd-common", features = ["std"]}
+anyhow = { version = "1" }
+aya = { version = "0.13.1", default-features = false }
+env_logger = { version = "0.11.7" }
+libc = { version = "0.2.159", default-features = false }
+log = { version = "0.4.26", default-features = false }
+procfs = { version = "0.17" }
+clap = { version = "4.5.30", features = ["derive"]}
+walkdir = { version = "2" }
+zstd = { version = "0.13", features = ["zstdmt"] }
+lz4_flex = { version = "0.11.3", features = ["frame"] }
+emd-ebpf = { version = "1.0.3" }
+emd-common = { version = "0.3.1", features = ["std"]}
+emd-ebpf-impl = "=1.0.1"
 
 [[bin]]
 name = "emd"

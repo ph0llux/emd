@@ -12,7 +12,7 @@ repository = "https://github.com/ph0llux/emd"
 keywords = ["forensics", "memory", "acquisition", "security", "ebpf"]
 
 [dependencies]
-aya-ebpf = { workspace = true }
+aya-ebpf = { version = "0.1.1", default-features = false }
 emd-common = { version = "0.3.1"}
 
 [build-dependencies]

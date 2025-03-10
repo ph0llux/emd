@@ -15,6 +15,11 @@ You need root privileges to use this tool.
 cargo build --release
 ```
 
+## install via cargo
+```bash
+cargo install emdumper
+```
+
 ## usage
 ```
 sudo ./emd -o output-file.bin
