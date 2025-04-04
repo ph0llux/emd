@@ -5,7 +5,6 @@ use std::{
      ops::Range, path::PathBuf
 };
 
-
 // - modules
 mod address_calculation;
 mod memory_dump;
@@ -44,6 +43,10 @@ struct Cli {
     /// sets the compression.
     #[clap(short='c', long="compress", global=true, required=false, value_enum, default_value="none")]
     compression: Compression,
+
+    /// sets the output-format.
+    #[clap(short='f', long="output-format", global=true, value_enum, default_value="raw")]
+    output_format: OutputFormat
 }
 
 #[derive(ValueEnum, Clone)]
@@ -62,6 +65,12 @@ enum LogLevel {
     Trace
 }
 
+#[derive(ValueEnum, Clone)]
+enum OutputFormat {
+    Raw,
+    Lime,
+}
+
 #[no_mangle]
 #[inline(never)]
 pub extern "C" fn _read_kernel_memory(_src_address: u64, _dump_size: usize) {}
@@ -78,6 +87,9 @@ fn read_kernel_memory(offset: u64, dump_size: usize) {
 }
 
 fn main() -> anyhow::Result<()> {
+
+    //TODO: Check if you are root || check if you've got appropriate capabilities.
+
     let args = Cli::parse();
 
     let log_level = match args.log_level {

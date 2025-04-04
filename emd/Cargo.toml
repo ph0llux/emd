@@ -1,6 +1,6 @@
 [package]
 name = "emdumper"
-version = "0.5.2"
+version = "0.6.0"
 edition = "2021"
 authors = ["ph0llux"]
 license = "GPL-3.0"
@@ -20,15 +20,10 @@ clap = { version = "4.5.30", features = ["derive"]}
 walkdir = { version = "2" }
 zstd = { version = "0.13", features = ["zstdmt"] }
 lz4_flex = { version = "0.11.3", features = ["frame"] }
-emd-ebpf = { version = "1.0.3" }
-emd-common = { version = "0.3.1", features = ["std"]}
-emd-ebpf-impl = "=1.0.1"
+emd-ebpf = { version="1.0.4" }
+emd-common = { version = "0.4.1", features = ["std"]}
+emd-ebpf-impl = "=1.0.2"
 
 [[bin]]
 name = "emd"
 path = "src/main.rs"
-
-[profile.release.package.emd-ebpf]
-debug = 2
-codegen-units = 1
-opt-level = 0

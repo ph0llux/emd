@@ -3,8 +3,8 @@ use super::*;
 
 pub fn dump_physical_memory(
     args: &Cli, 
-    buffer_queue: &mut Queue<&mut MapData, [u8; BUFFER_SIZE]>) -> anyhow::Result<()>
-{
+    buffer_queue: &mut Queue<&mut MapData, [u8; BUFFER_SIZE]>
+) -> anyhow::Result<()> {
     info!("Extracting memory ranges.");
     let system_ram_ranges = extract_mem_range(SEPARATOR_SYSTEM_RAM)?;
     info!("Calculating page offset base.");
@@ -33,7 +33,11 @@ fn dump_mem(
     mapping_offset: u64) -> anyhow::Result<()> {
 
     let mut output_file = BufWriter::new(prepare_writer(args)?);
-    
+
+    let mut header = match args.output_format {
+        OutputFormat::Lime => Header::Lime(LimeHeader::default()),
+        OutputFormat::Raw => Header::None,
+    };
 
     for range in memory_range {
         let range_len = range.end - range.start;
@@ -41,6 +45,7 @@ fn dump_mem(
         let range_start = range.start;
         info!("Dumping 0x{range_start:x} - 0x{range_end:x}");
         for offset in range.step_by(MAX_QUEUE_SIZE) {
+
             debug!("Dumping 0x{offset:x}");
             let remaining = (range_len - (offset - range_start)) as usize;
             let dump_size = if remaining < MAX_QUEUE_SIZE {
@@ -52,7 +57,8 @@ fn dump_mem(
             read_kernel_memory(mapping_offset+offset, dump_size);
 
             let queue_elements = calc_queue_elements(dump_size);
-            let mut unreadable_offsets = None;
+            let mut unreadable_offsets = Vec::new();
+            let mut optional_header_end_address = offset; // only used by e.g. LimeHeader
             for i in 0..queue_elements {
                 let queue_element_size = if i == queue_elements && dump_size % BUFFER_SIZE != 0 {
                     dump_size % BUFFER_SIZE
@@ -60,17 +66,24 @@ fn dump_mem(
                     BUFFER_SIZE
                 };
                 let buffer = match buffer_queue.pop(0) {
-                    Ok(value) => value,
+                    Ok(value) => {
+                        optional_header_end_address += queue_element_size as u64;
+                        value
+                    },
                     Err(_) => {
-                        if unreadable_offsets.is_none() {
-                            unreadable_offsets = Some((offset, i));
-                        }
+                        unreadable_offsets.push((offset, i));
                         [0u8; BUFFER_SIZE]
                     }
                 };
+
+                if let Header::Lime(header) = &mut header {
+                    header.start_address = offset;
+                    header.end_address = optional_header_end_address;
+                    output_file.write_all(&header.as_bytes())?;
+                }
                 output_file.write_all(&buffer[..queue_element_size])?;
             }
-            if let Some((offset, i)) = unreadable_offsets {
+            for (offset, i) in unreadable_offsets {
                 // only necessary to print in warning.
                 let start_offset = offset + (BUFFER_SIZE * i) as u64;
                 let end_offset = offset + (BUFFER_SIZE * (queue_elements-1)) as u64;
