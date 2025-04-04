@@ -1,6 +1,6 @@
 [package]
 name = "emd-ebpf-impl"
-version = "1.0.1"
+version = "1.0.2"
 edition = "2021"
 authors = ["ph0llux, 0x11d875"]
 license = "GPL-3.0"
@@ -13,7 +13,7 @@ keywords = ["forensics", "memory", "acquisition", "security", "ebpf"]
 
 [dependencies]
 aya-ebpf = { version = "0.1.1", default-features = false }
-emd-common = { version = "0.3.1"}
+emd-common = { version = "0.4.1"}
 
 [build-dependencies]
 which = { version = "7.0.2", default-features = false }
