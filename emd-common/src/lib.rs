@@ -22,8 +22,11 @@ pub const SEPARATOR_HYPHEN: char = '-';
 // KALLSYMS
 pub const PROC_KALLSYMS: &str = "/proc/kallsyms";
 pub const PAGE_OFFSET_BASE: &str = "page_offset_base";
+#[cfg(feature = "std")]
 const PROC_KPTR_RESTRICT: &str = "/proc/sys/kernel/kptr_restrict";
+#[cfg(feature = "std")]
 const PROC_OSRELEASE: &str = "/proc/sys/kernel/osrelease";
+#[cfg(feature = "std")]
 const SYSTEMMAP_PREFIX: &str = "/boot/System.map-";
 
 // self exe
