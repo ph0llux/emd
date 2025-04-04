@@ -18,7 +18,7 @@ aya = { version = "0.13.1", default-features = false }
 [build-dependencies]
 aya-build = { version = "0.1.2", default-features = false,  optional = true  }
 anyhow = { version = "1", default-features = false  }
-emd-ebpf-impl = { version = "1.0.1", optional = true }
+emd-ebpf-impl = { version = "1.0.2", optional = true }
 
 [features]
 default = []
