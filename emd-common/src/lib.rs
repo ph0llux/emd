@@ -5,7 +5,7 @@
 use std::{
     ops::Range,
     path::Path,
-    fs::File,
+    fs::{File, read_to_string},
     io::{Result, BufReader, BufRead, Error, ErrorKind},
 };
 
@@ -22,6 +22,9 @@ pub const SEPARATOR_HYPHEN: char = '-';
 // KALLSYMS
 pub const PROC_KALLSYMS: &str = "/proc/kallsyms";
 pub const PAGE_OFFSET_BASE: &str = "page_offset_base";
+const PROC_KPTR_RESTRICT: &str = "/proc/sys/kernel/kptr_restrict";
+const PROC_OSRELEASE: &str = "/proc/sys/kernel/osrelease";
+const SYSTEMMAP_PREFIX: &str = "/boot/System.map-";
 
 // self exe
 pub const PROC_SELF_EXE: &str = "/proc/self/exe";
@@ -33,6 +36,52 @@ pub const READ_KERNEL_MEM: &str = "read_kernel_memory";
 pub const ERROR_DUMP_MEMORY_IOMEM_SEPARATE_KEY_VAL_MAP: &str = "There is no left side in key/value pair";
 pub const ERROR_DUMP_MEMORY_IOMEM_CAPSYSADM: &str = "Need CAP_SYS_ADMIN to read /proc/iomem";
 pub const ERROR_PATH_READ_SYS: &str = "An error occured while trying to read necessary data from /sys";
+
+#[derive(Debug)]
+pub struct LimeHeader {
+    pub magic_bytes: u32,
+    pub header_version: u32,
+    pub start_address: u64,
+    pub end_address: u64,
+    pub reserved_space: [u8; 8],
+}
+
+impl Default for LimeHeader {
+    fn default() -> Self {
+        Self {
+            magic_bytes: 0x4C694D45,
+            header_version: 1,
+            start_address: 0,
+            end_address: 0,
+            reserved_space: [0u8; 8],
+        }
+    }
+}
+
+impl LimeHeader {
+    pub fn new(start_address: u64, end_address: u64) -> Self {
+        Self {
+            start_address,
+            end_address,
+            ..Default::default()
+        }
+    }
+
+    pub fn as_bytes(&self) -> [u8; 32] {
+        let mut bytes = [0u8; 32];
+        bytes[0..4].copy_from_slice(&self.magic_bytes.to_le_bytes());
+        bytes[4..8].copy_from_slice(&self.header_version.to_le_bytes());
+        bytes[8..16].copy_from_slice(&self.start_address.to_le_bytes());
+        bytes[16..24].copy_from_slice(&self.end_address.to_le_bytes());
+        bytes[24..32].copy_from_slice(&self.reserved_space);
+        bytes
+    }
+}
+
+pub enum Header {
+    None,
+    Lime(LimeHeader),
+}
 
 pub fn calc_queue_elements(dump_size: usize) -> usize {
     if dump_size % BUFFER_SIZE == 0 {
@@ -93,9 +142,11 @@ pub fn extract_mem_range<I: Into<String>>(identifier: I) -> Result<Vec<Range<u64
 }
 
 #[cfg(feature = "std")]
-pub fn get_page_offset_base_address() -> Result<u64>{
-    let path = Path::new(PROC_KALLSYMS);
-    let file = File::open(path)?;
+pub fn get_page_offset_base_address_from_file() -> Result<u64>{
+    let file = match get_kptr_restrict()? {
+        KptrRestrict::Full => get_system_map_fd()?,
+        _ => get_kallsyms_fd()?,
+    };
     let reader = BufReader::new(file);
     for line in reader.lines() {
         let line = line?;
@@ -111,6 +162,24 @@ pub fn get_page_offset_base_address() -> Result<u64>{
     Ok(0)
 }
 
+fn get_system_map_fd() -> Result<File> {
+    let os_release = read_to_string(PROC_OSRELEASE)?;
+    let path = Path::new(SYSTEMMAP_PREFIX).join(os_release);
+    File::open(path)
+}
+
+fn get_kallsyms_fd() -> Result<File> {
+    let path = Path::new(PROC_KALLSYMS);
+    File::open(path)
+}
+
+#[cfg(feature = "std")]
+fn get_kptr_restrict() -> Result<KptrRestrict> {
+    let value_str = read_to_string(PROC_KPTR_RESTRICT)?;
+    let value = value_str.trim().parse::<u8>().unwrap();
+    KptrRestrict::try_from(value)
+}
+
 #[cfg(feature = "std")]
 fn parse_memory_range(line: &str) -> Option<(u64, u64)> {
     let parts: Vec<&str> = line.split_whitespace().collect();
@@ -123,4 +192,25 @@ fn parse_memory_range(line: &str) -> Option<(u64, u64)> {
         }
     }
     None
+}
+
+#[cfg(feature = "std")]
+enum KptrRestrict {
+    None,
+    Partial,
+    Full
+}
+
+#[cfg(feature = "std")]
+impl TryFrom<u8> for KptrRestrict {
+    type Error = std::io::Error;
+
+    fn try_from(value: u8) -> core::result::Result<Self, Self::Error> {
+        match value {
+            0 => Ok(KptrRestrict::None),
+            1 => Ok(KptrRestrict::Partial),
+            2 => Ok(KptrRestrict::Full),
+            _ => Err(std::io::Error::new(std::io::ErrorKind::InvalidData, format!("{value}"))),
+        }
+    }
 }
