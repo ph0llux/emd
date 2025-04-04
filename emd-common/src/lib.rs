@@ -162,12 +162,14 @@ pub fn get_page_offset_base_address_from_file() -> Result<u64>{
     Ok(0)
 }
 
+#[cfg(feature = "std")]
 fn get_system_map_fd() -> Result<File> {
     let os_release = read_to_string(PROC_OSRELEASE)?;
     let path = Path::new(SYSTEMMAP_PREFIX).join(os_release);
     File::open(path)
 }
 
+#[cfg(feature = "std")]
 fn get_kallsyms_fd() -> Result<File> {
     let path = Path::new(PROC_KALLSYMS);
     File::open(path)
