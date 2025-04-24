@@ -20,8 +20,8 @@ clap = { version = "4.5.30", features = ["derive"]}
 walkdir = { version = "2" }
 zstd = { version = "0.13", features = ["zstdmt"] }
 lz4_flex = { version = "0.11.3", features = ["frame"] }
-emd-ebpf = { version="1.0.4" }
-emd-common = { version = "0.4.1", features = ["std"]}
+emd-ebpf = { path="../emd-ebpf", features = ["build"]}
+emd-common = { path="../emd-common", features = ["std"]}
 emd-ebpf-impl = "=1.0.2"
 
 [[bin]]

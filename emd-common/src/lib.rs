@@ -10,7 +10,7 @@ use std::{
 };
 
 // This file exists to enable the library target.
-pub const BUFFER_SIZE: usize = 256; // 512 bytes is the maximum allowed stack size of an ebpf program. We won't reach this.
+pub const BUFFER_SIZE: usize = 16384;
 pub const QUEUE_SIZE: u32 = 64;
 pub const MAX_QUEUE_SIZE: usize = QUEUE_SIZE as usize * BUFFER_SIZE;
 

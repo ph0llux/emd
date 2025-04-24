@@ -4,7 +4,7 @@
 use aya_ebpf::{
     helpers::bpf_probe_read_kernel_buf, 
     macros::{map, uprobe}, 
-    maps::Queue, 
+    maps::{PerCpuArray, Queue}, 
     programs::ProbeContext,
 };
 
@@ -13,27 +13,60 @@ use emd_common::{
     calc_queue_elements,
 };
 
+#[cfg(feature = "log")]
+use aya_log_ebpf::{debug, error};
+
 #[map] // 
-static BUFFER: Queue<[u8; BUFFER_SIZE]> = Queue::<[u8; BUFFER_SIZE]>::with_max_entries(QUEUE_SIZE, 0);
+static BUFFER_QUEUE: Queue<[u8; BUFFER_SIZE]> = Queue::<[u8; BUFFER_SIZE]>::with_max_entries(QUEUE_SIZE, 0);
+
+#[map] // 
+static BUFFER: PerCpuArray<[u8; BUFFER_SIZE]> = PerCpuArray::<[u8; BUFFER_SIZE]>::with_max_entries(1, 0);
 
 #[uprobe]
 fn read_kernel_memory(ctx: ProbeContext) -> u32 {
+    #[cfg(feature = "log")]
+    debug!(&ctx, "Starting uprobe to read kernel memory.");
+
     let mut src_address: u64 = match ctx.arg(0) {
         Some(value) => value,
-        None => return 1,
+        None => {
+            #[cfg(feature = "log")]
+            error!(&ctx, "Cannot read source address from probe-context.");
+            return 1
+        },
     };
 
     let dump_size: usize = match ctx.arg(1) {
         Some(value) => value,
-        None => return 2,
+        None => {
+            #[cfg(feature = "log")]
+            error!(&ctx, "Cannot read dumpsize from probe-context.");
+            return 2
+        },
     };
     if dump_size > MAX_QUEUE_SIZE {
+        #[cfg(feature = "log")]
+        error!(&ctx, "Given dump size ({}) is greater than maximum allowed dump size ({})", dump_size, MAX_QUEUE_SIZE);
         return 3;
     }
 
     let queue_elements = calc_queue_elements(dump_size);
+    #[cfg(feature = "log")]
+    debug!(&ctx, "Using {} queue elements");
     
-    let mut buffer = [0u8; BUFFER_SIZE];
+
+    let buffer = unsafe {
+        let ptr = match BUFFER.get_ptr_mut(0) {
+            Some(ptr) => ptr,
+            None => {
+                #[cfg(feature = "log")]
+                error!(&ctx, "Cannot assign buffer ptr. This is an application bug.");
+                return 0;
+            }
+        };
+        &mut *ptr
+    };
+
     for i in 0..queue_elements {
         let queue_element_size = if i == queue_elements -1 && dump_size % BUFFER_SIZE != 0 {
             dump_size % BUFFER_SIZE
@@ -47,7 +80,7 @@ fn read_kernel_memory(ctx: ProbeContext) -> u32 {
                     return 4
                 },
                 Ok(_) => {
-                    if BUFFER.push(&buffer, 0).is_err() {
+                    if BUFFER_QUEUE.push(&(*buffer), 0).is_err() {
                         return 5;
                     }
                     src_address += queue_element_size as u64;

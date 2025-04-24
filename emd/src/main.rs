@@ -138,6 +138,6 @@ fn main() -> anyhow::Result<()> {
 
     // get page_offset_base
     info!("Initializing buffer queue.");
-    let mut buffer_queue = Queue::try_from(ebpf.map_mut("BUFFER").unwrap())?;
+    let mut buffer_queue = Queue::try_from(ebpf.map_mut("BUFFER_QUEUE").unwrap())?;
     dump_physical_memory(&args, &mut buffer_queue)
 }
