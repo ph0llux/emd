@@ -1,6 +1,6 @@
 [package]
 name = "emd-ebpf-impl"
-version = "1.0.2"
+version = "1.1.0"
 edition = "2021"
 authors = ["ph0llux, 0x11d875"]
 license = "GPL-3.0"
