@@ -1,15 +1,18 @@
+use crate::traits::HumanReadable;
+
 // - parent
 use super::*;
 
 pub fn dump_physical_memory(
     args: &Cli, 
-    buffer_queue: &mut Queue<&mut MapData, [u8; BUFFER_SIZE]>
+    buffer_queue: &mut Queue<&mut MapData, [u8; BUFFER_SIZE]>,
+    multi: &MultiProgress,
 ) -> anyhow::Result<()> {
     info!("Extracting memory ranges.");
     let system_ram_ranges = extract_mem_range(SEPARATOR_SYSTEM_RAM)?;
     info!("Calculating page offset base.");
     let page_offset_base = get_page_offset_base(buffer_queue)?;
-    dump_mem(args, buffer_queue, system_ram_ranges, page_offset_base)
+    dump_mem(args, buffer_queue, system_ram_ranges, page_offset_base, multi)
 }
 
 fn prepare_writer(args: &Cli) -> anyhow::Result<Box<dyn Write>> {
@@ -30,13 +33,28 @@ fn dump_mem(
     args: &Cli,
     buffer_queue: &mut Queue<&mut MapData, [u8; BUFFER_SIZE]>,
     memory_range: Vec<Range<u64>>,
-    mapping_offset: u64) -> anyhow::Result<()> {
+    mapping_offset: u64,
+    multi: &MultiProgress) -> anyhow::Result<()> {
 
     let mut output_file = BufWriter::new(prepare_writer(args)?);
 
     let mut header = match args.output_format {
         OutputFormat::Lime => Header::Lime(LimeHeader::default()),
         OutputFormat::Raw => Header::None,
+    };
+
+    // calculate memory size for progress bar
+    let memory_size = memory_size()?;
+    info!("Total size to dump: {}", memory_size.bytes_as_hrb());
+
+    let progress_bar = if args.progress_bar {
+        let pb = multi.add(ProgressBar::new(memory_size));
+        pb.set_style(ProgressStyle::with_template("{spinner:.green} [{elapsed_precise}] [{decimal_bytes_per_sec}] [{wide_bar:.green/blue}] [{binary_bytes}/{binary_total_bytes}] [{percent}%] ({eta})")
+        .unwrap()
+        .progress_chars("=>-"));
+        Some(pb)
+    } else {
+        None
     };
 
     for range in memory_range {
@@ -82,6 +100,9 @@ fn dump_mem(
                     output_file.write_all(&header.as_bytes())?;
                 }
                 output_file.write_all(&buffer[..queue_element_size])?;
+                if let Some(ref pb) = progress_bar {
+                    pb.inc(queue_element_size as u64)
+                };
             }
             for (offset, i) in unreadable_offsets {
                 // only necessary to print in warning.

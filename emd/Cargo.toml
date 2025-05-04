@@ -1,6 +1,6 @@
 [package]
 name = "emdumper"
-version = "0.6.0"
+version = "0.7.0"
 edition = "2021"
 authors = ["ph0llux"]
 license = "GPL-3.0"
@@ -13,10 +13,13 @@ readme = "../README.md"
 anyhow = { version = "1" }
 aya = { version = "0.13.1", default-features = false }
 aya-log ={ version =  "0.2.1"}
+caps ={ version = "0.5.5"}
 clap = { version = "4.5.30", features = ["derive"]}
-emd-ebpf = { path="../emd-ebpf", features = ["build", "log"]}
-emd-common = { path="../emd-common", features = ["std"]}
+emd-ebpf = { version = "1.0.7", features = ["log"]}
+emd-common = { version = "0.5.0", features = ["std"]}
 env_logger = { version = "0.11.7" }
+indicatif = "0.17.11"
+indicatif-log-bridge = "0.2.3"
 libc = { version = "0.2.159", default-features = false }
 log = { version = "0.4.26", default-features = false }
 lz4_flex = { version = "0.11.3", features = ["frame"] }

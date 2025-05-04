@@ -8,6 +8,7 @@ use std::{
 // - modules
 mod address_calculation;
 mod memory_dump;
+mod traits;
 
 // - re-exports
 use address_calculation::*;
@@ -22,10 +23,14 @@ use clap::{
     ValueEnum,
 };
 use emd_common::*;
-use log::{LevelFilter, info, debug, warn};
+use indicatif::{ProgressBar, MultiProgress, ProgressStyle, ProgressDrawTarget};
+use indicatif_log_bridge::LogWrapper;
+use log::{LevelFilter, info, debug, warn, error};
 use lz4_flex::frame::FrameEncoder as Lz4Encoder;
 use procfs::process::{Process, MMPermissions};
 use zstd::stream::Encoder as ZstdEncoder;
+use caps::{has_cap, CapSet, Capability};
+
 
 #[derive(Parser)]
 #[clap(about, version, author)]
@@ -44,7 +49,11 @@ struct Cli {
 
     /// sets the output-format.
     #[clap(short='f', long="output-format", global=true, value_enum, default_value="raw")]
-    output_format: OutputFormat
+    output_format: OutputFormat,
+
+    /// adds a progress bar
+    #[clap(short='p', long="progress-bar", global=true)]
+    progress_bar: bool
 }
 
 #[derive(ValueEnum, Clone)]
@@ -87,9 +96,10 @@ fn read_kernel_memory(offset: u64, dump_size: usize) {
 #[tokio::main] // necessary for aya_log :-/
 async fn main() -> anyhow::Result<()> {
 
-    //TODO: Check if you are root || check if you've got appropriate capabilities.
-
     let args = Cli::parse();
+
+    // setup the progress bar (only neccessary for the progress bar option is set)
+    let multi = MultiProgress::with_draw_target(ProgressDrawTarget::stdout());
 
     let log_level = match args.log_level {
         LogLevel::Error => LevelFilter::Error,
@@ -98,10 +108,14 @@ async fn main() -> anyhow::Result<()> {
         LogLevel::Debug => LevelFilter::Debug,
         LogLevel::Trace => LevelFilter::Trace,
     };
-    env_logger::builder()
+    let logger = env_logger::builder()
         .format_timestamp_nanos()
         .filter_level(log_level)
-        .init();
+        .build();
+
+    LogWrapper::new(multi.clone(), logger)
+    .try_init()
+    .unwrap();
 
     let pid = std::process::id();
     info!("Using PID: {pid}");
@@ -109,6 +123,19 @@ async fn main() -> anyhow::Result<()> {
     let package_name = env!("CARGO_BIN_NAME");
     let package_version = env!("CARGO_PKG_VERSION");
     info!("Initializing {package_name} {package_version}.");
+
+    // check if necessary capabilities are set
+    match has_cap(None, CapSet::Effective, Capability::CAP_SYS_ADMIN) {
+        Ok(false) => {
+            error!("Missing necessary capabilities (CAP_SYS_ADMIN) - You should try to run emd as root. ;)");
+            std::process::exit(1);
+        },
+        Err(e) => {
+            error!("Unable to verify capabilities (You should try to run emd as root): {e}");
+            std::process::exit(1);
+        },
+        Ok(true) => (),
+    };
 
     info!("Setting rlimits.");
     // Bump the memlock rlimit. This is needed for older kernels that don't use the
@@ -143,5 +170,5 @@ async fn main() -> anyhow::Result<()> {
     // get page_offset_base
     info!("Initializing buffer queue.");
     let mut buffer_queue = Queue::try_from(ebpf.map_mut("BUFFER_QUEUE").unwrap())?;
-    dump_physical_memory(&args, &mut buffer_queue)
+    dump_physical_memory(&args, &mut buffer_queue, &multi)
 }
