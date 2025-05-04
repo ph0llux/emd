@@ -1,12 +1,13 @@
+#[cfg(feature = "build")]
 use std::{
     env, fs,
     io::{BufRead as _, BufReader},
     path::PathBuf,
     process::{Child, Command, Stdio},
 };
-
+#[cfg(feature = "build")]
 use anyhow::{anyhow, Context as _, Result};
-
+#[cfg(feature = "build")]
 use cargo_metadata::{Artifact, CompilerMessage, Message, Package, Target};
 
 fn main() -> anyhow::Result<()> {
