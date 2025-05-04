@@ -47,6 +47,7 @@ fn build_ebpf() -> anyhow::Result<()> {
 /// prevent their use for the time being.
 ///
 /// [bindeps]: https://doc.rust-lang.org/nightly/cargo/reference/unstable.html?highlight=feature#artifact-dependencies
+#[cfg(feature = "build")]
 fn inner_build_ebpf(packages: impl IntoIterator<Item = Package>) -> Result<()> {
     let out_dir = env::var_os("OUT_DIR").ok_or(anyhow!("OUT_DIR not set"))?;
     let out_dir = PathBuf::from(out_dir);
