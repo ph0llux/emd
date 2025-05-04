@@ -18,10 +18,12 @@ aya = { version = "0.13.1", default-features = false }
 [build-dependencies]
 aya-build = { version = "0.1.2", default-features = false,  optional = true  }
 anyhow = { version = "1", default-features = false  }
-emd-ebpf-impl = { version = "1.0.2", optional = true }
+cargo_metadata = "0.19.2"
+emd-ebpf-impl = { path="../emd-ebpf-impl", optional = true }
 
 [features]
 default = []
+log = ["emd-ebpf-impl/log"]
 build = ["dep:aya-build", "dep:emd-ebpf-impl"] # Build eBPF instead of using the prebuild ebpf binary
 
 [lib]

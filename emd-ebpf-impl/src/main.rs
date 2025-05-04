@@ -52,7 +52,7 @@ fn read_kernel_memory(ctx: ProbeContext) -> u32 {
 
     let queue_elements = calc_queue_elements(dump_size);
     #[cfg(feature = "log")]
-    debug!(&ctx, "Using {} queue elements");
+    debug!(&ctx, "Using {} queue elements", queue_elements);
     
 
     let buffer = unsafe {

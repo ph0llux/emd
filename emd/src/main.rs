@@ -14,20 +14,18 @@ use address_calculation::*;
 use memory_dump::*;
 
 // - External
-use procfs::process::{Process, MMPermissions};
 use aya::{programs::UProbe, Ebpf};
 use aya::maps::{MapData, Queue};
-use emd_common::*;
-
-use zstd::stream::Encoder as ZstdEncoder;
-use lz4_flex::frame::FrameEncoder as Lz4Encoder;
-
+use aya_log::EbpfLogger;
 use clap::{
     Parser,
     ValueEnum,
 };
-
+use emd_common::*;
 use log::{LevelFilter, info, debug, warn};
+use lz4_flex::frame::FrameEncoder as Lz4Encoder;
+use procfs::process::{Process, MMPermissions};
+use zstd::stream::Encoder as ZstdEncoder;
 
 #[derive(Parser)]
 #[clap(about, version, author)]
@@ -86,7 +84,8 @@ fn read_kernel_memory(offset: u64, dump_size: usize) {
     }
 }
 
-fn main() -> anyhow::Result<()> {
+#[tokio::main] // necessary for aya_log :-/
+async fn main() -> anyhow::Result<()> {
 
     //TODO: Check if you are root || check if you've got appropriate capabilities.
 
@@ -107,7 +106,9 @@ fn main() -> anyhow::Result<()> {
     let pid = std::process::id();
     info!("Using PID: {pid}");
 
-    info!("Initializing ebpf memory dumper.");
+    let package_name = env!("CARGO_BIN_NAME");
+    let package_version = env!("CARGO_PKG_VERSION");
+    info!("Initializing {package_name} {package_version}.");
 
     info!("Setting rlimits.");
     // Bump the memlock rlimit. This is needed for older kernels that don't use the
@@ -125,6 +126,9 @@ fn main() -> anyhow::Result<()> {
     // This will include your eBPF object file as raw bytes at compile-time and load it at
     // runtime.
     let mut ebpf = Ebpf::load(emd_ebpf::EBPF_BINARY)?;
+
+    info!("Initialize eBPF logger.");
+    EbpfLogger::init(&mut ebpf)?;
 
     info!("Initialize function.");
     let program: &mut UProbe = ebpf.program_mut(READ_KERNEL_MEM).unwrap().try_into()?;

@@ -12,17 +12,18 @@ readme = "../README.md"
 [dependencies]
 anyhow = { version = "1" }
 aya = { version = "0.13.1", default-features = false }
+aya-log ={ version =  "0.2.1"}
+clap = { version = "4.5.30", features = ["derive"]}
+emd-ebpf = { path="../emd-ebpf", features = ["build", "log"]}
+emd-common = { path="../emd-common", features = ["std"]}
 env_logger = { version = "0.11.7" }
 libc = { version = "0.2.159", default-features = false }
 log = { version = "0.4.26", default-features = false }
+lz4_flex = { version = "0.11.3", features = ["frame"] }
 procfs = { version = "0.17" }
-clap = { version = "4.5.30", features = ["derive"]}
+tokio = { version = "1.40.2", default-features = false, features = ["macros", "rt", "rt-multi-thread", "signal"] }
 walkdir = { version = "2" }
 zstd = { version = "0.13", features = ["zstdmt"] }
-lz4_flex = { version = "0.11.3", features = ["frame"] }
-emd-ebpf = { path="../emd-ebpf", features = ["build"]}
-emd-common = { path="../emd-common", features = ["std"]}
-emd-ebpf-impl = "=1.0.2"
 
 [[bin]]
 name = "emd"
