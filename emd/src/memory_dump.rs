@@ -15,18 +15,27 @@ pub fn dump_physical_memory(
     dump_mem(args, buffer_queue, system_ram_ranges, page_offset_base, multi)
 }
 
+fn select_output(args: &Cli) -> anyhow::Result<Box<dyn Write>> {
+    if args.stdout {
+        Ok(Box::new(stdout()))
+    } else {
+        let file = File::create(&args.output.as_ref().unwrap())?;
+        Ok(Box::new(file))
+    }
+}
+
 fn prepare_writer(args: &Cli) -> anyhow::Result<Box<dyn Write>> {
-    let file = File::create(&args.output)?;
+    let output = select_output(args)?;
     match &args.compression {
         Compression::None => {
-            Ok(Box::new(file))
+            Ok(output)
         },
         Compression::Zstd => {
-            let encoder = ZstdEncoder::new(file, 3)?;
+            let encoder = ZstdEncoder::new(output, 3)?;
             Ok(Box::new(encoder.auto_finish()))
         },
-        Compression::Lz4 => Ok(Box::new(Lz4Encoder::new(file)))
-    }
+        Compression::Lz4 => Ok(Box::new(Lz4Encoder::new(output)))
+    }    
 }
 
 fn dump_mem(
@@ -90,6 +99,7 @@ fn dump_mem(
                     },
                     Err(_) => {
                         unreadable_offsets.push((offset, i));
+                        optional_header_end_address += queue_element_size as u64;
                         [0u8; BUFFER_SIZE]
                     }
                 };

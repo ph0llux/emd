@@ -1,7 +1,7 @@
 // - STD
 use std::{
     fs::File, 
-    io::{BufWriter, Write},
+    io::{BufWriter, Write, stdout},
      ops::Range, path::PathBuf
 };
 
@@ -19,8 +19,7 @@ use aya::{programs::UProbe, Ebpf};
 use aya::maps::{MapData, Queue};
 use aya_log::EbpfLogger;
 use clap::{
-    Parser,
-    ValueEnum,
+    ArgGroup, Parser, ValueEnum
 };
 use emd_common::*;
 use indicatif::{ProgressBar, MultiProgress, ProgressStyle, ProgressDrawTarget};
@@ -33,11 +32,15 @@ use caps::{has_cap, CapSet, Capability};
 
 
 #[derive(Parser)]
-#[clap(about, version, author)]
+#[clap(about, version, author, group(ArgGroup::new("out").args(&["output", "stdout"]).required(true)))]
 struct Cli {
     /// sets the target file (where your memory will be dumped to).
-    #[clap(short='o', long="outputfile", required=true)]
-    output: PathBuf,
+    #[clap(short='o', long="outputfile")]
+    output: Option<PathBuf>,
+
+    /// sets the target output to stdout (conflicts with --outputfile)
+    #[clap(short='s', long="stdout")]
+    stdout: bool,
 
     /// sets the log level - default is info.
     #[clap(short='l', long="loglevel", global=true, required=false, value_enum, default_value="info")]
@@ -48,7 +51,7 @@ struct Cli {
     compression: Compression,
 
     /// sets the output-format.
-    #[clap(short='f', long="output-format", global=true, value_enum, default_value="raw")]
+    #[clap(short='f', long="output-format", global=true, value_enum, default_value="lime")]
     output_format: OutputFormat,
 
     /// adds a progress bar
@@ -99,7 +102,7 @@ async fn main() -> anyhow::Result<()> {
     let args = Cli::parse();
 
     // setup the progress bar (only neccessary for the progress bar option is set)
-    let multi = MultiProgress::with_draw_target(ProgressDrawTarget::stdout());
+    let multi = MultiProgress::with_draw_target(ProgressDrawTarget::stderr());
 
     let log_level = match args.log_level {
         LogLevel::Error => LevelFilter::Error,
