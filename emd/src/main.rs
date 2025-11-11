@@ -81,11 +81,11 @@ enum OutputFormat {
     Lime,
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 pub extern "C" fn _read_kernel_memory(_src_address: u64, _dump_size: usize) {}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 fn read_kernel_memory(offset: u64, dump_size: usize) {
     let func: extern "C" fn(u64, usize) = _read_kernel_memory;
